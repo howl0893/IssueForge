@@ -9,11 +9,32 @@
 
 ---
 
+## 🎉 Octosync 2.0 Available!
+
+This repository has been enhanced with significant new features:
+
+- ✅ **YAML Configuration** - Easier to manage than environment variables
+- ✅ **Enhanced Sync** - Descriptions, labels sync bidirectionally on updates
+- ✅ **Advanced Logging** - Winston-based structured logging
+- ✅ **Retry Logic** - Automatic retries with exponential backoff
+- ✅ **Health Checks** - Monitor your sync service
+- ✅ **Docker Compose** - Easier deployment with Redis support
+
+📖 **[Read the full 2.0 documentation](README-2.0.md)**  
+🔄 **[Migration guide from 1.0](MIGRATION.md)**
+
+> **Note**: Version 2.0 is **fully backward compatible** with 1.0 - your existing environment variables will continue to work!
+
+---
+
 ## Features
 
 - Sync issue creation bi-directionally
 - Sync issue closing bi-directionally
 - Sync issue comments bi-directionally
+- **NEW in 2.0**: Sync issue descriptions/body bidirectionally
+- **NEW in 2.0**: Sync labels bidirectionally
+- **NEW in 2.0**: Configuration-driven sync behavior
 
 ## Packages
 
