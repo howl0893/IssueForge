@@ -48,6 +48,9 @@ const ConfigSchema = z.object({
     port: z.number().default(8000),
     nodeEnv: z.string().default("development"),
   }).optional(),
+  logging: z.object({
+    directory: z.string().default("logs"),
+  }).optional(),
 });
 
 export type OctosyncConfig = z.infer<typeof ConfigSchema>;
@@ -98,6 +101,9 @@ export function loadConfig(configPath?: string): OctosyncConfig {
     server: {
       port: process.env.PORT ? parseInt(process.env.PORT) : 8000,
       nodeEnv: process.env.NODE_ENV || "development",
+    },
+    logging: {
+      directory: process.env.LOG_DIRECTORY || "logs",
     },
     sync: {
       descriptions: true,

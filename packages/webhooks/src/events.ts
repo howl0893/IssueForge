@@ -5,16 +5,10 @@ import { github } from "./github";
 import { jira } from "./jira";
 import { lookup } from "dns";
 import { hostname } from "os";
-import * as fs from "fs";
 
 const logger = getLogger();
 
 export function startEventsServer() {
-  // Ensure logs directory exists
-  if (!fs.existsSync("logs")) {
-    fs.mkdirSync("logs", { recursive: true });
-  }
-
   const config = getConfig();
   const PORT = config.server?.port || 8000;
   const GITHUB_REPOSITORY = config.github.repository;

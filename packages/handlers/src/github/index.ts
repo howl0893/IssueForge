@@ -3,6 +3,7 @@ import {
   reverse,
   ISSUE_KEY_REGEX,
   CONTROL_COMMENT_BODY,
+  CONTROL_LABELS,
   getLogger,
   getConfig,
 } from "@octosync/utils";
@@ -100,7 +101,7 @@ export async function handleEditedIssue(params: {
   if (config.sync?.labels && labels) {
     // Filter out control labels
     const syncLabels = labels.filter(l => 
-      l !== "source:github" && l !== "source:jira"
+      l !== CONTROL_LABELS.FROM_GITHUB && l !== CONTROL_LABELS.FROM_JIRA
     );
     if (syncLabels.length > 0) {
       updates.labels = syncLabels;

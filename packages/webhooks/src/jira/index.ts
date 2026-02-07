@@ -102,7 +102,7 @@ webhook.post("/jira", async (req, res) => {
           // Sync labels if configured
           if (config.sync?.labels && jiraLabels) {
             const syncLabels = jiraLabels.filter(l => 
-              l !== "source:github" && l !== "source:jira"
+              l !== CONTROL_LABELS.FROM_GITHUB && l !== CONTROL_LABELS.FROM_JIRA
             );
             if (syncLabels.length > 0) {
               syncLabels.push(CONTROL_LABELS.FROM_JIRA);
@@ -113,8 +113,9 @@ webhook.post("/jira", async (req, res) => {
 
           // Sync assignees if configured
           if (config.sync?.assignees && assignee) {
-            // For GitHub, we need username not email
-            // This is a limitation - we'd need a mapping or use the display name
+            // TODO: Assignee sync requires GitHub username mapping
+            // Jira provides email/accountId but GitHub needs username
+            // Options: 1) Maintain a mapping in config, 2) Use Jira displayName as best effort
             logger.debug(`Assignee update detected but username mapping not implemented yet`);
           }
 

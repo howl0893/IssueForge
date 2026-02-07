@@ -3,13 +3,26 @@ import { getConfig } from "../config";
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
+// Sanitize user input for safe logging (prevent log injection)
+function sanitizeForLog(value: any): string {
+  if (typeof value !== "string") {
+    return String(value);
+  }
+  // Remove newlines and control characters that could be used for log injection
+  return value.replace(/[\r\n\t\x00-\x1f\x7f-\x9f]/g, "");
+}
+
 // Custom log format
 const logFormat = printf(({ level, message, timestamp, stack, ...metadata }) => {
   let msg = `${timestamp} [${level}]: ${message}`;
   
-  // Add metadata if present
+  // Add metadata if present (sanitize values)
   if (Object.keys(metadata).length > 0) {
-    msg += ` ${JSON.stringify(metadata)}`;
+    const sanitizedMeta: any = {};
+    for (const [key, value] of Object.entries(metadata)) {
+      sanitizedMeta[key] = typeof value === "string" ? sanitizeForLog(value) : value;
+    }
+    msg += ` ${JSON.stringify(sanitizedMeta)}`;
   }
   
   // Add stack trace for errors
@@ -30,6 +43,13 @@ export function createLogger(): winston.Logger {
 
   const config = getConfig();
   const isDevelopment = config.server?.nodeEnv === "development";
+  const logDirectory = config.logging?.directory || "logs";
+
+  // Ensure log directory exists
+  const fs = require("fs");
+  if (!fs.existsSync(logDirectory)) {
+    fs.mkdirSync(logDirectory, { recursive: true });
+  }
 
   logger = winston.createLogger({
     level: isDevelopment ? "debug" : "info",
@@ -47,21 +67,21 @@ export function createLogger(): winston.Logger {
       }),
       // File transport for errors
       new winston.transports.File({
-        filename: "logs/error.log",
+        filename: `${logDirectory}/error.log`,
         level: "error",
         format: combine(timestamp({ format: "YYYY-MM-DD HH:mm:ss" }), logFormat),
       }),
       // File transport for all logs
       new winston.transports.File({
-        filename: "logs/combined.log",
+        filename: `${logDirectory}/combined.log`,
         format: combine(timestamp({ format: "YYYY-MM-DD HH:mm:ss" }), logFormat),
       }),
     ],
     exceptionHandlers: [
-      new winston.transports.File({ filename: "logs/exceptions.log" }),
+      new winston.transports.File({ filename: `${logDirectory}/exceptions.log` }),
     ],
     rejectionHandlers: [
-      new winston.transports.File({ filename: "logs/rejections.log" }),
+      new winston.transports.File({ filename: `${logDirectory}/rejections.log` }),
     ],
   });
 
