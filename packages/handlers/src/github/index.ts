@@ -4,11 +4,13 @@ import {
   ISSUE_KEY_REGEX,
   CONTROL_COMMENT_BODY,
   getLogger,
+  getConfig,
 } from "@octosync/utils";
 import { Clients } from "../types";
 import { resolveGithubClient } from "./utils";
 
 const logger = getLogger();
+const config = getConfig();
 
 export async function handleOpenedIssue(params: {
   clients: Clients;
@@ -61,6 +63,68 @@ export async function handleOpenedIssue(params: {
   });
 
   logger.info(`Successfully linked GitHub #${issueNumber} with Jira ${issue.key}`);
+}
+
+export async function handleEditedIssue(params: {
+  clients: Clients;
+  title: string;
+  body: string;
+  labels: string[];
+  issueNumber: number;
+  organization: string;
+  repository: string;
+  assignee: string | null;
+}) {
+  const { title, body, labels, issueNumber, assignee } = params;
+
+  // Extract Jira key from title
+  const match = reverse(title).match(ISSUE_KEY_REGEX);
+
+  if (!match) {
+    logger.debug(`No Jira issue key found in title for edited issue #${issueNumber}`);
+    return false;
+  }
+
+  const jiraKey = reverse(match[0]);
+
+  logger.debug(`Syncing updates from GitHub #${issueNumber} to Jira ${jiraKey}`);
+
+  // Only sync if configured
+  const updates: any = {};
+
+  if (config.sync?.descriptions && body) {
+    updates.description = body;
+    logger.debug(`Updating description for ${jiraKey}`);
+  }
+
+  if (config.sync?.labels && labels) {
+    // Filter out control labels
+    const syncLabels = labels.filter(l => 
+      l !== "source:github" && l !== "source:jira"
+    );
+    if (syncLabels.length > 0) {
+      updates.labels = syncLabels;
+      logger.debug(`Updating labels for ${jiraKey}`, { labels: syncLabels });
+    }
+  }
+
+  if (config.sync?.assignees && assignee) {
+    updates.assigneeEmail = assignee;
+    logger.debug(`Updating assignee for ${jiraKey}`, { assignee });
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await jira.updateIssue({
+      issueKey: jiraKey,
+      ...updates,
+    });
+
+    logger.info(`Successfully synced updates from GitHub #${issueNumber} to Jira ${jiraKey}`);
+    return true;
+  }
+
+  logger.debug(`No updates to sync for GitHub #${issueNumber}`);
+  return false;
 }
 
 export async function handleClosedIssue(params: { title: string }) {

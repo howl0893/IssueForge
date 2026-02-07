@@ -25,7 +25,7 @@ webhook.post("/jira", async (req, res) => {
       webhookEvent,
       comment,
       issue: {
-        fields: { summary, description, labels: jiraLabels, status },
+        fields: { summary, description, labels: jiraLabels, status, assignee },
         key,
       },
     } = reqBody;
@@ -66,19 +66,62 @@ webhook.post("/jira", async (req, res) => {
         logger.info(`Successfully created GitHub issue for Jira ${key}`);
         break;
       case "jira:issue_updated":
-        if (status.name === JIRA_DONE_STATUS_NAME) {
-          await withRetry(async () => {
-            await github.updateIssue({
-              issueNumber:
-                reqBody.issue.fields[JIRA_CUSTOM_GITHUB_ISSUE_NUMBER_FIELD],
-              repository:
-                reqBody.issue.fields[JIRA_CUSTOM_GITHUB_REPOSITORY_FIELD],
-              state: "closed",
-            });
-          });
+        const ghIssueNumber = reqBody.issue.fields[JIRA_CUSTOM_GITHUB_ISSUE_NUMBER_FIELD];
+        const ghRepository = reqBody.issue.fields[JIRA_CUSTOM_GITHUB_REPOSITORY_FIELD];
 
-          logger.info(`Successfully closed GitHub issue for Jira ${key}`);
+        if (!ghIssueNumber || !ghRepository) {
+          logger.debug(`Issue ${key} not linked to GitHub, skipping update`);
+          break;
         }
+
+        // Skip if this is a FROM_JIRA labeled issue being updated
+        if (jiraLabels?.includes(CONTROL_LABELS.FROM_GITHUB)) {
+          logger.debug(`Issue ${key} update from GitHub, skipping to prevent loop`);
+          res.status(409).end("Conflict");
+          return res;
+        }
+
+        await withRetry(async () => {
+          const updates: any = {
+            issueNumber: ghIssueNumber,
+            repository: ghRepository,
+          };
+
+          // Handle status change (close/reopen)
+          if (status.name === JIRA_DONE_STATUS_NAME) {
+            updates.state = "closed";
+            logger.debug(`Closing GitHub issue #${ghIssueNumber} for Jira ${key}`);
+          }
+
+          // Sync description if configured
+          if (config.sync?.descriptions && description) {
+            updates.body = description;
+            logger.debug(`Updating description for GitHub #${ghIssueNumber}`);
+          }
+
+          // Sync labels if configured
+          if (config.sync?.labels && jiraLabels) {
+            const syncLabels = jiraLabels.filter(l => 
+              l !== "source:github" && l !== "source:jira"
+            );
+            if (syncLabels.length > 0) {
+              syncLabels.push(CONTROL_LABELS.FROM_JIRA);
+              updates.labels = removeDuplicates(syncLabels);
+              logger.debug(`Updating labels for GitHub #${ghIssueNumber}`, { labels: updates.labels });
+            }
+          }
+
+          // Sync assignees if configured
+          if (config.sync?.assignees && assignee) {
+            // For GitHub, we need username not email
+            // This is a limitation - we'd need a mapping or use the display name
+            logger.debug(`Assignee update detected but username mapping not implemented yet`);
+          }
+
+          await github.updateIssue(updates);
+        });
+
+        logger.info(`Successfully synced updates from Jira ${key} to GitHub #${ghIssueNumber}`);
         break;
       case "comment_created":
         const commentBody = comment?.body;

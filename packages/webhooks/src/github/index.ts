@@ -3,6 +3,7 @@ import {
   handleClosedIssue,
   handleIssueCommentCreation,
   handleOpenedIssue,
+  handleEditedIssue,
 } from "@octosync/handlers";
 import { webhook } from "../router";
 import { IssuePayload } from "./types";
@@ -17,7 +18,7 @@ webhook.post("/github", async (req, res) => {
   try {
     const {
       action,
-      issue: { title, body, number: ghIssueNumber, labels: ghLabels },
+      issue: { title, body, number: ghIssueNumber, labels: ghLabels, assignee },
       sender,
       comment,
       repository: {
@@ -63,6 +64,37 @@ webhook.post("/github", async (req, res) => {
           });
         });
         logger.info(`Successfully synced opened issue #${ghIssueNumber} to Jira`);
+        break;
+      case "edited":
+        // Skip if this is a control label edit
+        if (ghLabels.some((label) => label.name === CONTROL_LABELS.FROM_JIRA)) {
+          logger.debug(`Issue #${ghIssueNumber} edit from Jira, skipping to prevent loop`);
+          res.status(409).end("Conflict");
+          return res;
+        }
+
+        const edited = await withRetry(async () => {
+          return await handleEditedIssue({
+            clients: {
+              github: {
+                auth: GITHUB_TOKEN,
+              },
+            },
+            organization: organizationName,
+            title,
+            body,
+            labels,
+            issueNumber: ghIssueNumber,
+            repository: repositoryName,
+            assignee: assignee?.login || null,
+          });
+        });
+
+        if (!edited) {
+          logger.debug(`No Jira issue found or no updates needed for #${ghIssueNumber}`);
+        } else {
+          logger.info(`Successfully synced edited issue #${ghIssueNumber} to Jira`);
+        }
         break;
       case "closed":
         const success = await withRetry(async () => {
