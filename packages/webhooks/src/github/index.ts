@@ -1,4 +1,4 @@
-import { removeDuplicates, CONTROL_LABELS, useEnv } from "@octosync/utils";
+import { removeDuplicates, CONTROL_LABELS, getConfig, getLogger, withRetry } from "@octosync/utils";
 import {
   handleClosedIssue,
   handleIssueCommentCreation,
@@ -7,7 +7,9 @@ import {
 import { webhook } from "../router";
 import { IssuePayload } from "./types";
 
-const { GITHUB_TOKEN } = useEnv();
+const config = getConfig();
+const logger = getLogger();
+const GITHUB_TOKEN = config.github.token;
 
 webhook.post("/github", async (req, res) => {
   const reqBody = req.body as IssuePayload;
@@ -25,12 +27,15 @@ webhook.post("/github", async (req, res) => {
     } = reqBody;
     const triggererEmail = reqBody.issue.user.login;
 
+    logger.info(`Received GitHub webhook: ${action} for issue #${ghIssueNumber} in ${organizationName}/${repositoryName}`);
+
     // This means that this issue has already been created,
     // and this hook must finish executing immediately.
     if (
       action === "opened" &&
       ghLabels.some((label) => label.name === CONTROL_LABELS.FROM_JIRA)
     ) {
+      logger.debug(`Issue #${ghIssueNumber} has FROM_JIRA label, skipping to prevent loop`);
       res.status(409).end("Conflict");
       return res;
     }
@@ -41,58 +46,73 @@ webhook.post("/github", async (req, res) => {
 
     switch (action) {
       case "opened":
-        await handleOpenedIssue({
-          clients: {
-            github: {
-              auth: GITHUB_TOKEN,
+        await withRetry(async () => {
+          await handleOpenedIssue({
+            clients: {
+              github: {
+                auth: GITHUB_TOKEN,
+              },
             },
-          },
-          organization: organizationName,
-          title,
-          triggererEmail,
-          body,
-          labels,
-          issueNumber: ghIssueNumber,
-          repository: repositoryName,
+            organization: organizationName,
+            title,
+            triggererEmail,
+            body,
+            labels,
+            issueNumber: ghIssueNumber,
+            repository: repositoryName,
+          });
         });
+        logger.info(`Successfully synced opened issue #${ghIssueNumber} to Jira`);
         break;
       case "closed":
-        const success = await handleClosedIssue({ title });
+        const success = await withRetry(async () => {
+          return await handleClosedIssue({ title });
+        });
 
         if (!success) {
+          logger.warn(`Could not find Jira issue key in title: ${title}`);
           res.status(422).end("Unprocessable Entity");
           return res;
         }
 
+        logger.info(`Successfully closed Jira issue for GitHub #${ghIssueNumber}`);
         break;
       case "created":
-        const result = await handleIssueCommentCreation({
-          clients: {
-            github: {
-              auth: GITHUB_TOKEN,
+        const result = await withRetry(async () => {
+          return await handleIssueCommentCreation({
+            clients: {
+              github: {
+                auth: GITHUB_TOKEN,
+              },
             },
-          },
-          title,
-          body: comment.body,
-          owner: sender.login,
-          repository: repositoryName,
-          commentId: comment.id,
+            title,
+            body: comment.body,
+            owner: sender.login,
+            repository: repositoryName,
+            commentId: comment.id,
+          });
         });
 
         if (result === "conflict") {
+          logger.debug(`Comment on issue #${ghIssueNumber} is a sync comment, skipping`);
           res.status(409).end("Conflict");
           return res;
         }
 
         if (result === "unprocessableEntity") {
+          logger.warn(`Could not find Jira issue key in title for comment: ${title}`);
           res.status(422).end("Unprocessable Entity");
           return res;
         }
+
+        logger.info(`Successfully synced comment on issue #${ghIssueNumber} to Jira`);
         break;
       default:
+        logger.debug(`Unhandled GitHub action: ${action}`);
         break;
     }
-  } catch (error) {
+  } catch (error: any) {
+    logger.error(`Error processing GitHub webhook`, { error: error.message, stack: error.stack });
     res.status(400).end("Bad Request");
     return res;
   }

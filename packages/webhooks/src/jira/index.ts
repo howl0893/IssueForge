@@ -1,5 +1,5 @@
 import { github, jira } from "@octosync/clients";
-import { useEnv } from "@octosync/utils";
+import { getConfig, getLogger, withRetry } from "@octosync/utils";
 import {
   removeDuplicates,
   CONTROL_COMMENT_BODY,
@@ -9,15 +9,16 @@ import {
 import { webhook } from "../router";
 import { IssuePayload } from "./types";
 
+const config = getConfig();
+const logger = getLogger();
+
 webhook.post("/jira", async (req, res) => {
   const reqBody = req.body as IssuePayload;
 
-  const {
-    GITHUB_REPOSITORY,
-    JIRA_DONE_STATUS_NAME,
-    JIRA_CUSTOM_GITHUB_ISSUE_NUMBER_FIELD,
-    JIRA_CUSTOM_GITHUB_REPOSITORY_FIELD,
-  } = useEnv();
+  const GITHUB_REPOSITORY = config.github.repository;
+  const JIRA_DONE_STATUS_NAME = config.jira.doneStatusName;
+  const JIRA_CUSTOM_GITHUB_ISSUE_NUMBER_FIELD = `customfield_${config.jira.customFields.githubIssueNumber}`;
+  const JIRA_CUSTOM_GITHUB_REPOSITORY_FIELD = `customfield_${config.jira.customFields.githubRepository}`;
 
   try {
     const {
@@ -29,11 +30,14 @@ webhook.post("/jira", async (req, res) => {
       },
     } = reqBody;
 
+    logger.info(`Received Jira webhook: ${webhookEvent} for issue ${key}`);
+
     switch (webhookEvent) {
       case "jira:issue_created":
         // This means that this issue has already been created,
         // and this hook must finish executing immediately.
         if (jiraLabels?.includes(CONTROL_LABELS.FROM_GITHUB)) {
+          logger.debug(`Issue ${key} has FROM_GITHUB label, skipping to prevent loop`);
           res.status(409).end("Conflict");
           return res;
         }
@@ -42,34 +46,45 @@ webhook.post("/jira", async (req, res) => {
 
         const labels = removeDuplicates(jiraLabels);
 
-        const { data: issue } = await github.createIssue({
-          repository: GITHUB_REPOSITORY,
-          title: `${key} - ${summary}`,
-          body: description,
-          labels,
+        await withRetry(async () => {
+          const { data: issue } = await github.createIssue({
+            repository: GITHUB_REPOSITORY,
+            title: `${key} - ${summary}`,
+            body: description,
+            labels,
+          });
+
+          await jira.updateIssueWithGithubData({
+            issueKey: key,
+            repository: issue.repository_url.match(
+              STRING_AFTER_LAST_SLASH_REGEX
+            )![0],
+            issueNumber: issue.number.toString(),
+          });
         });
 
-        await jira.updateIssueWithGithubData({
-          issueKey: key,
-          repository: issue.repository_url.match(
-            STRING_AFTER_LAST_SLASH_REGEX
-          )![0],
-          issueNumber: issue.number.toString(),
-        });
+        logger.info(`Successfully created GitHub issue for Jira ${key}`);
+        break;
       case "jira:issue_updated":
         if (status.name === JIRA_DONE_STATUS_NAME) {
-          await github.updateIssue({
-            issueNumber:
-              reqBody.issue.fields[JIRA_CUSTOM_GITHUB_ISSUE_NUMBER_FIELD],
-            repository:
-              reqBody.issue.fields[JIRA_CUSTOM_GITHUB_REPOSITORY_FIELD],
-            state: "closed",
+          await withRetry(async () => {
+            await github.updateIssue({
+              issueNumber:
+                reqBody.issue.fields[JIRA_CUSTOM_GITHUB_ISSUE_NUMBER_FIELD],
+              repository:
+                reqBody.issue.fields[JIRA_CUSTOM_GITHUB_REPOSITORY_FIELD],
+              state: "closed",
+            });
           });
+
+          logger.info(`Successfully closed GitHub issue for Jira ${key}`);
         }
+        break;
       case "comment_created":
         const commentBody = comment?.body;
 
         if (!commentBody) {
+          logger.warn(`Received comment_created without body for ${key}`);
           res.status(400).end("Bad Request");
           return res;
         }
@@ -79,29 +94,37 @@ webhook.post("/jira", async (req, res) => {
           commentBody.includes(CONTROL_COMMENT_BODY.FROM_GITHUB) ||
           commentBody.includes(CONTROL_COMMENT_BODY.FROM_JIRA)
         ) {
+          logger.debug(`Comment on ${key} is a sync comment, skipping`);
           res.status(409).end("Conflict");
           return res;
         }
 
-        const jiraIssue = await jira.getIssue(key);
+        await withRetry(async () => {
+          const jiraIssue = await jira.getIssue(key);
 
-        if (!jiraIssue) {
-          res.status(404).end("Not Found");
-          return res;
-        }
+          if (!jiraIssue) {
+            logger.warn(`Could not find Jira issue ${key}`);
+            res.status(404).end("Not Found");
+            return;
+          }
 
-        const customBody = `${commentBody}\n\n${CONTROL_COMMENT_BODY.FROM_JIRA} by ${comment?.author.displayName}`;
+          const customBody = `${commentBody}\n\n${CONTROL_COMMENT_BODY.FROM_JIRA} by ${comment?.author.displayName}`;
 
-        await github.commentIssue({
-          issueNumber: jiraIssue.fields[JIRA_CUSTOM_GITHUB_ISSUE_NUMBER_FIELD],
-          repository: jiraIssue.fields[JIRA_CUSTOM_GITHUB_REPOSITORY_FIELD],
-          body: customBody,
+          await github.commentIssue({
+            issueNumber: jiraIssue.fields[JIRA_CUSTOM_GITHUB_ISSUE_NUMBER_FIELD],
+            repository: jiraIssue.fields[JIRA_CUSTOM_GITHUB_REPOSITORY_FIELD],
+            body: customBody,
+          });
         });
+
+        logger.info(`Successfully synced comment from Jira ${key} to GitHub`);
+        break;
       default:
+        logger.debug(`Unhandled Jira event: ${webhookEvent}`);
         break;
     }
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
+    logger.error(`Error processing Jira webhook`, { error: error.message, stack: error.stack });
     res.status(400).end("Bad Request");
     return res;
   }

@@ -3,9 +3,12 @@ import {
   reverse,
   ISSUE_KEY_REGEX,
   CONTROL_COMMENT_BODY,
+  getLogger,
 } from "@octosync/utils";
 import { Clients } from "../types";
 import { resolveGithubClient } from "./utils";
+
+const logger = getLogger();
 
 export async function handleOpenedIssue(params: {
   clients: Clients;
@@ -32,6 +35,8 @@ export async function handleOpenedIssue(params: {
 
   const github = resolveGithubClient(clients);
 
+  logger.debug(`Creating Jira issue for GitHub #${issueNumber}`, { title, repository });
+
   const issue = await jira.createJiraIssue(
     title,
     triggererEmail,
@@ -44,6 +49,8 @@ export async function handleOpenedIssue(params: {
 
   const updatedTitle = `${issue.key} - ${title}`;
 
+  logger.debug(`Created Jira issue ${issue.key}, updating GitHub issue title`);
+
   await github.issues.update({
     owner: organization,
     repo: repository,
@@ -52,6 +59,8 @@ export async function handleOpenedIssue(params: {
     title: updatedTitle,
     state,
   });
+
+  logger.info(`Successfully linked GitHub #${issueNumber} with Jira ${issue.key}`);
 }
 
 export async function handleClosedIssue(params: { title: string }) {
@@ -60,10 +69,17 @@ export async function handleClosedIssue(params: { title: string }) {
   const match = reverse(title).match(ISSUE_KEY_REGEX);
 
   if (!match) {
+    logger.debug(`No Jira issue key found in title: ${title}`);
     return false;
   }
 
-  await jira.closeIssue(reverse(match[0]));
+  const jiraKey = reverse(match[0]);
+
+  logger.debug(`Closing Jira issue ${jiraKey}`);
+
+  await jira.closeIssue(jiraKey);
+
+  logger.info(`Successfully closed Jira issue ${jiraKey}`);
 
   return true;
 }
@@ -82,12 +98,14 @@ export async function handleIssueCommentCreation(params: {
     body.includes(CONTROL_COMMENT_BODY.FROM_GITHUB) ||
     body.includes(CONTROL_COMMENT_BODY.FROM_JIRA)
   ) {
+    logger.debug(`Comment ${commentId} is a sync comment, skipping`);
     return "conflict";
   }
 
   const match = reverse(title).match(ISSUE_KEY_REGEX);
 
   if (!match) {
+    logger.debug(`No Jira issue key found in title for comment: ${title}`);
     return "unprocessableEntity";
   }
 
@@ -102,10 +120,16 @@ export async function handleIssueCommentCreation(params: {
     body,
   });
 
+  const jiraKey = reverse(match[0]);
+
+  logger.debug(`Syncing comment to Jira issue ${jiraKey}`);
+
   await jira.commentIssue({
-    issueKey: reverse(match[0]),
+    issueKey: jiraKey,
     body: customBody,
   });
+
+  logger.info(`Successfully synced comment to Jira issue ${jiraKey}`);
 
   return "success";
 }
