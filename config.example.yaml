@@ -1,0 +1,52 @@
+# Octosync Configuration File
+# This is an example configuration file for Octosync 2.0
+# Copy this file to config.yaml and fill in your values
+
+github:
+  token: "your-github-personal-access-token"
+  organization: "your-github-organization-or-username"
+  repository: "your-repository-name"
+
+jira:
+  host: "https://your-company.atlassian.net"
+  apiToken: "your-jira-api-token"
+  issuerEmail: "your-jira-account-email@example.com"
+  project: "PROJ"  # Your Jira project key
+  projectId: "10000"  # Your Jira project ID
+  doneTransitionId: "41"  # Transition ID for moving issues to "Done"
+  doneStatusName: "Done"  # Name of the "Done" status
+  customFields:
+    githubRepository: "10035"  # Custom field ID for GitHub repository
+    githubIssueNumber: "10036"  # Custom field ID for GitHub issue number
+
+# Sync configuration (optional)
+sync:
+  descriptions: true  # Sync issue descriptions/body
+  labels: true  # Sync labels bidirectionally
+  assignees: true  # Sync assignees bidirectionally
+  attachments: false  # Sync attachments (experimental)
+  comments: true  # Sync comments bidirectionally
+  
+  # Status mapping (optional) - map GitHub states to Jira transition IDs
+  # statusMapping:
+  #   open: "11"  # Transition ID for "To Do"
+  #   closed: "41"  # Transition ID for "Done"
+  
+  # Sync rules (optional) - filter what gets synced
+  # rules:
+  #   includeLabels:
+  #     - "sync"
+  #     - "bug"
+  #   excludeLabels:
+  #     - "no-sync"
+  #   jqlFilter: "project = PROJ AND labels = sync"
+
+# Retry configuration (optional)
+retry:
+  maxAttempts: 3  # Maximum number of retry attempts
+  initialDelay: 1000  # Initial delay in milliseconds
+
+# Server configuration (optional)
+server:
+  port: 8000
+  nodeEnv: "production"  # or "development"

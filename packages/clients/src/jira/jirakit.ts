@@ -110,15 +110,15 @@ export class Jira implements Client {
     } catch (e) {
       const callbackErrorHandler =
         callback && ((error: Config.Error) => callback(error));
-      const defaultErrorHandler = (error: Error) => {
+      const defaultErrorHandler = (error: any) => {
         throw error;
       };
 
       const errorHandler = callbackErrorHandler ?? defaultErrorHandler;
 
-      this.config.middlewares?.onError?.(e);
+      this.config.middlewares?.onError?.(e as any);
 
-      return errorHandler(e);
+      return errorHandler(e as any);
     }
   }
 

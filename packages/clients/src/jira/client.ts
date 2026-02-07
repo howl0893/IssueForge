@@ -102,6 +102,49 @@ export class Jira {
     }
   }
 
+  public async updateIssue(params: {
+    issueKey: string;
+    summary?: string;
+    description?: string;
+    labels?: string[];
+    assigneeEmail?: string;
+  }) {
+    const { issueKey, summary, description, labels, assigneeEmail } = params;
+
+    try {
+      const fields: any = {};
+
+      if (summary) {
+        fields.summary = summary;
+      }
+
+      if (description !== undefined) {
+        fields.description = description;
+      }
+
+      if (labels) {
+        fields.labels = labels;
+      }
+
+      if (assigneeEmail) {
+        const accountId = await this.getUserAccountId(assigneeEmail);
+        if (accountId) {
+          fields.assignee = { id: accountId };
+        }
+      }
+
+      if (Object.keys(fields).length > 0) {
+        await jira.issues.editIssue({
+          issueIdOrKey: issueKey,
+          fields,
+        });
+      }
+    } catch (error) {
+      handleAxiosError(error);
+      throw error;
+    }
+  }
+
   public async commentIssue(params: { issueKey: string; body: string }) {
     const { issueKey, body } = params;
 

@@ -79,8 +79,9 @@ export class Github {
     title: string;
     body: string;
     labels: string[];
+    assignees?: string[];
   }) {
-    const { repository, title, body, labels } = params;
+    const { repository, title, body, labels, assignees } = params;
 
     return await github.issues.create({
       owner: this.organization,
@@ -88,6 +89,7 @@ export class Github {
       title: title,
       body: body,
       labels,
+      assignees,
     });
   }
 
@@ -97,8 +99,10 @@ export class Github {
     state?: "open" | "closed";
     body?: string;
     title?: string;
+    labels?: string[];
+    assignees?: string[];
   }) {
-    const { repository, issueNumber, body, title, state } = params;
+    const { repository, issueNumber, body, title, state, labels, assignees } = params;
 
     return await github.issues.update({
       owner: this.organization,
@@ -107,6 +111,8 @@ export class Github {
       body,
       title,
       state,
+      labels,
+      assignees,
     });
   }
 }
