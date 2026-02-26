@@ -2,7 +2,7 @@
 [![Build](https://github.com/howl0893/IssueForge/actions/workflows/build.yml/badge.svg)](https://github.com/howl0893/IssueForge/actions/workflows/build.yml)
 
 <p align="center">
-  <img alt="IssueForge logo" src="./assets/IssueForge.png" height="500" />
+  <img alt="IssueForge logo" src="./assets/issue-forge.png" height="500" />
   <h3 align="center">IssueForge</h3>
   <p align="center">An open-source solution to keep Github and Jira issues synchronized. An alternative to Exalate and Unito. Forked from
   <a href="https://github.com/howl0893/IssueForge.git">IssueForge</a>
