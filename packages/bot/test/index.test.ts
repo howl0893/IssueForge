@@ -34,28 +34,26 @@ describe("My Probot app", () => {
     probot.load(myProbotApp);
   });
 
-  test("creates a comment when an issue is opened", async (done) => {
-    const mock = nock("https://api.github.com")
-      // Test that we correctly return a test token
+  test("creates a comment when an issue is opened", async () => {
+    nock("https://api.github.com")
       .post("/app/installations/2/access_tokens")
       .reply(200, {
         token: "test",
         permissions: {
           issues: "write",
         },
-      })
+      });
 
-      // Test that a comment is posted
+    const commentMock = nock("https://api.github.com")
       .post("/repos/hiimbex/testing-things/issues/1/comments", (body: any) => {
-        done(expect(body).toMatchObject(issueCreatedBody));
+        expect(body).toMatchObject(issueCreatedBody);
         return true;
       })
       .reply(200);
 
-    // Receive a webhook event
     await probot.receive({ name: "issues", payload });
 
-    expect(mock.pendingMocks()).toStrictEqual([]);
+    expect(commentMock.isDone()).toBe(true);
   });
 
   afterEach(() => {
