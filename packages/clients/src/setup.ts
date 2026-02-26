@@ -1,5 +1,5 @@
 import { Github } from "./github";
-import { useEnv } from "@octosync/utils";
+import { useEnv } from "@IssueForge/utils";
 import { Jira } from "./jira";
 
 function setup() {

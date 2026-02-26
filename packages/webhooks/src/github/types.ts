@@ -1,5 +1,5 @@
 export interface IssuePayload {
-  action: "opened" | "assigned" | "labeled" | "closed" | "edited" | "created";
+  action: "opened" | "assigned" | "labeled" | "closed" | "edited" | "created" | "deleted" | "unlabeled" | "unassigned";
   issue: {
     url: string;
     repository_url: string;
@@ -28,7 +28,6 @@ export interface IssuePayload {
     labels: IssueLabel[];
     state: "open" | string;
     locked: boolean;
-    // TODO
     assignee: null | {
       /**
        * Assignee github name
@@ -37,14 +36,30 @@ export interface IssuePayload {
       avatar_url: string;
       site_admin: boolean;
     };
-    // TODO
-    assignees: [];
+    assignees: Array<{
+      login: string;
+      avatar_url: string;
+      site_admin: boolean;
+    }>;
     comments: number;
     created_at: string;
     updated_at: string;
-    // TODO
-    closed_at: null;
+    closed_at: null | string;
     author_association: "COLLABORATOR" | string;
+  };
+  label?: IssueLabel;
+  assignee?: {
+    login: string;
+    avatar_url: string;
+    site_admin: boolean;
+  };
+  changes?: {
+    title?: {
+      from: string;
+    };
+    body?: {
+      from: string;
+    };
   };
   comment: {
     url: string;
@@ -52,8 +67,11 @@ export interface IssuePayload {
     issue_url: string;
     id: number;
     node_id: string;
-    // TODO
-    user: [];
+    user: {
+      login: string;
+      avatar_url: string;
+      site_admin: boolean;
+    };
     created_at: string;
     updated_at: string;
     author_association: "OWNER" | string;

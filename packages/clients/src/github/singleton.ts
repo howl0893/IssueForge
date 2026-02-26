@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import { useEnv } from "@octosync/utils";
+import { useEnv } from "@IssueForge/utils";
 
 let githubInstance: Octokit | null = null;
 

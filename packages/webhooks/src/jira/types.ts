@@ -1,16 +1,29 @@
-import { User, CreatedIssue } from "@octosync/clients";
+import { User, CreatedIssue } from "@IssueForge/clients";
 
 export interface IssuePayload {
   timestamp: number;
   webhookEvent:
     | "jira:issue_created"
     | "jira:issue_updated"
+    | "jira:issue_deleted"
     | "comment_created"
+    | "comment_updated"
+    | "comment_deleted"
     | string;
   issue_event_type_name: "issue_created" | "issue_generic" | string;
   user: User;
   issue: CreatedIssue & {
     fields: IssuePayloadField;
+  };
+  changelog?: {
+    items: Array<{
+      field: string;
+      fieldtype: string;
+      from: string | null;
+      fromString: string | null;
+      to: string | null;
+      toString: string | null;
+    }>;
   };
   comment?: {
     self: string;

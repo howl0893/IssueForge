@@ -1,6 +1,9 @@
-FROM node:14
+FROM node:18-alpine
 
-SHELL ["/bin/bash", "-c"]
+SHELL ["/bin/sh", "-c"]
+
+# Install build dependencies for better-sqlite3
+RUN apk add --no-cache python3 make g++
 
 RUN mkdir -p /app
 WORKDIR /app
@@ -9,16 +12,17 @@ WORKDIR /app
 COPY package.json /app/package.json
 COPY yarn.lock /app/yarn.lock
 COPY packages/clients/package.json /app/packages/clients/package.json
+COPY packages/db/package.json /app/packages/db/package.json
 COPY packages/handlers/package.json /app/packages/handlers/package.json
 COPY packages/utils/package.json /app/packages/utils/package.json
 COPY packages/webhooks/package.json /app/packages/webhooks/package.json
 
 COPY lerna.json /app/lerna.json
-RUN ["/bin/bash", "-c", "yarn install"]
+RUN yarn install
 
 # Bundle app source
 COPY . /app
-RUN ["/bin/bash", "-c", "yarn build"]
+RUN yarn build
 
 EXPOSE 8000
 CMD [ "yarn", "start:webhooks:prod" ]

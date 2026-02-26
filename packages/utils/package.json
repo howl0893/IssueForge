@@ -1,14 +1,14 @@
 {
-  "name": "@octosync/utils",
+  "name": "@IssueForge/utils",
   "version": "0.1.0",
   "main": "build/index.js",
   "types": "build/index.d.ts",
-  "description": "Octosync utils",
-  "author": "Marcelo Cardoso <marcelovicentegc@gmail.com>",
+  "description": "IssueForge utils",
+  "author": "Matthew Howlett <mhowlett@applied-ml.dev>",
   "license": "ISC",
-  "homepage": "https://github.com/marcelovicentegc/octosync",
+  "homepage": "https://github.com/howl0893/IssueForge",
   "keywords": [
-    "octosync"
+    "IssueForge"
   ],
   "scripts": {
     "build": "rimraf build && tsc"
@@ -19,5 +19,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "gitHead": "8f3c3a731c82e6f65dae2bc3f9eb1e752eac6dc8"
+  "gitHead": "8f3c3a731c82e6f65dae2bc3f9eb1e752eac6dc8",
+  "devDependencies": {
+    "@types/pino-std-serializers": "^4.0.0"
+  }
 }

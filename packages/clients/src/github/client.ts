@@ -109,4 +109,78 @@ export class Github {
       state,
     });
   }
+
+  public async deleteComment(params: {
+    repository: string;
+    commentId: number;
+  }) {
+    const { repository, commentId } = params;
+
+    try {
+      return await github.issues.deleteComment({
+        owner: this.organization,
+        repo: repository,
+        comment_id: commentId,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async replaceAllLabels(params: {
+    repository: string;
+    issueNumber: number;
+    labels: string[];
+  }) {
+    const { repository, issueNumber, labels } = params;
+
+    try {
+      return await github.issues.setLabels({
+        owner: this.organization,
+        repo: repository,
+        issue_number: issueNumber,
+        labels,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async addAssignees(params: {
+    repository: string;
+    issueNumber: number;
+    assignees: string[];
+  }) {
+    const { repository, issueNumber, assignees } = params;
+
+    try {
+      return await github.issues.addAssignees({
+        owner: this.organization,
+        repo: repository,
+        issue_number: issueNumber,
+        assignees,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async removeAssignees(params: {
+    repository: string;
+    issueNumber: number;
+    assignees: string[];
+  }) {
+    const { repository, issueNumber, assignees } = params;
+
+    try {
+      return await github.issues.removeAssignees({
+        owner: this.organization,
+        repo: repository,
+        issue_number: issueNumber,
+        assignees,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
 }
