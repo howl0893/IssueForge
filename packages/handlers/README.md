@@ -1,9 +1,9 @@
-[![License: MIT](https://img.shields.io/github/license/marcelovicentegc/octosync)](LICENSE)
-[![Build](https://github.com/marcelovicentegc/octosync/actions/workflows/build.yml/badge.svg)](https://github.com/marcelovicentegc/octosync/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/github/license/howl0893/IssueForge)](LICENSE)
+[![Build](https://github.com/howl0893/IssueForge/actions/workflows/build.yml/badge.svg)](https://github.com/howl0893/IssueForge/actions/workflows/build.yml)
 
 <p align="center">
-  <img alt="octosync logo" src="https://raw.githubusercontent.com/marcelovicentegc/octosync/main/assets/octosync.png" height="300" />
-  <h3 align="center">@octosync/handlers</h3>
+  <img alt="IssueForge logo" src="https://raw.githubusercontent.com/howl0893/IssueForge/main/assets/IssueForge.png" height="300" />
+  <h3 align="center">@IssueForge/handlers</h3>
   <p align="center"></p>
 </p>
 

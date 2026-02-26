@@ -4,8 +4,8 @@ export const CONTROL_LABELS = {
 };
 
 export const CONTROL_COMMENT_BODY = {
-  FROM_GITHUB: "**COMMENT FROM GITHUB**",
-  FROM_JIRA: "**COMMENT FROM JIRA**",
+  FROM_GITHUB: "comment from github",
+  FROM_JIRA: "comment from jira",
 };
 
 export const STRING_AFTER_LAST_SLASH_REGEX = /([^\/]+$)/g;

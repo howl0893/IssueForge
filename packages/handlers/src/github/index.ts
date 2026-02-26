@@ -1,9 +1,11 @@
-import { jira } from "@octosync/clients";
+import { jira } from "@IssueForge/clients";
+import { db } from "@IssueForge/db";
 import {
   reverse,
   ISSUE_KEY_REGEX,
   CONTROL_COMMENT_BODY,
-} from "@octosync/utils";
+  logger,
+} from "@IssueForge/utils";
 import { Clients } from "../types";
 import { resolveGithubClient } from "./utils";
 
@@ -37,10 +39,14 @@ export async function handleOpenedIssue(params: {
     triggererEmail,
     body,
     labels,
-    jira.defaultIssueTypes.task,
+    undefined,
     repository,
     issueNumber.toString()
   );
+
+  logger.success(`Created Jira issue ${issue.key} for GitHub #${issueNumber}`, {
+    context: "Handler",
+  });
 
   const updatedTitle = `${issue.key} - ${title}`;
 
@@ -52,18 +58,47 @@ export async function handleOpenedIssue(params: {
     title: updatedTitle,
     state,
   });
+
+  logger.info(`Updated GitHub #${issueNumber} title with Jira key: ${issue.key}`, {
+    context: "Handler",
+  });
 }
 
-export async function handleClosedIssue(params: { title: string }) {
-  const { title } = params;
+export async function handleClosedIssue(params: {
+  title: string;
+  repository?: string;
+  issueNumber?: number;
+}) {
+  const { title, repository, issueNumber } = params;
 
   const match = reverse(title).match(ISSUE_KEY_REGEX);
 
-  if (!match) {
+  let issueKey: string | null = null;
+
+  if (match) {
+    issueKey = reverse(match[0]);
+  } else if (repository && issueNumber) {
+    // Fallback: try to find Jira issue by GitHub custom fields
+    logger.info(`Jira key not found in title, searching by custom fields`, {
+      context: "Handler",
+      data: { repository, issueNumber },
+    });
+    issueKey = await jira.findIssueByGitHubData({ repository, issueNumber });
+  }
+
+  if (!issueKey) {
+    logger.warn(`Cannot close Jira issue - no Jira key found in title and custom field search failed`, {
+      context: "Handler",
+      data: { title, repository, issueNumber },
+    });
     return false;
   }
 
-  await jira.closeIssue(reverse(match[0]));
+  await jira.closeIssue(issueKey);
+
+  logger.success(`Transitioned Jira issue ${issueKey} to Done`, {
+    context: "Handler",
+  });
 
   return true;
 }
@@ -75,8 +110,9 @@ export async function handleIssueCommentCreation(params: {
   commentId: number;
   owner: string;
   repository: string;
+  issueNumber: number;
 }) {
-  const { clients, title, body, commentId, owner, repository } = params;
+  const { clients, title, body, commentId, owner, repository, issueNumber } = params;
 
   if (
     body.includes(CONTROL_COMMENT_BODY.FROM_GITHUB) ||
@@ -91,9 +127,10 @@ export async function handleIssueCommentCreation(params: {
     return "unprocessableEntity";
   }
 
+  const issueKey = reverse(match[0]);
   const github = resolveGithubClient(clients);
 
-  const customBody = `${body}\n\n${CONTROL_COMMENT_BODY.FROM_GITHUB} by ${owner}`;
+  const customBody = `${body}\n\n${CONTROL_COMMENT_BODY.FROM_GITHUB}`;
 
   await github.issues.updateComment({
     owner,
@@ -102,9 +139,22 @@ export async function handleIssueCommentCreation(params: {
     body,
   });
 
-  await jira.commentIssue({
-    issueKey: reverse(match[0]),
+  const jiraCommentId = await jira.commentIssue({
+    issueKey,
     body: customBody,
+  });
+
+  // Store comment ID mapping
+  db.get().saveCommentMapping({
+    githubCommentId: commentId,
+    jiraCommentId,
+    githubIssueNumber: issueNumber,
+    githubRepository: repository,
+    jiraIssueKey: issueKey,
+  });
+
+  logger.success(`Synced comment to Jira issue ${issueKey}`, {
+    context: "Handler",
   });
 
   return "success";

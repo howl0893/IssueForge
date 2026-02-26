@@ -115,5 +115,8 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# octosync
+# IssueForge
 build
+
+IssueForge.db
+.DS_Store

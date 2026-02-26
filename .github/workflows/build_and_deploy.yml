@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  IMAGE_NAME: octosync
+  IMAGE_NAME: IssueForge
 
 jobs:
   build:
@@ -52,7 +52,7 @@ jobs:
 
   push_to_registry:
     if: "! contains(toJSON(github.event.commits.*.message), '[skip-deploy]')"
-    name: Build and push Octosync's image to GHCR
+    name: Build and push IssueForge's image to GHCR
     runs-on: ubuntu-latest
     needs: build
     steps:

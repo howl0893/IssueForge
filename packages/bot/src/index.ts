@@ -3,8 +3,8 @@ import {
   handleClosedIssue,
   handleIssueCommentCreation,
   handleOpenedIssue,
-} from "@octosync/handlers";
-import { CONTROL_LABELS, removeDuplicates } from "@octosync/utils";
+} from "@IssueForge/handlers";
+import { CONTROL_LABELS, removeDuplicates } from "@IssueForge/utils";
 
 export = (app: Probot) => {
   app.on("issues.opened", async (ctx) => {
@@ -71,6 +71,7 @@ export = (app: Probot) => {
       owner: sender.login,
       repository: repositoryName,
       commentId: comment.id,
+      issueNumber: ctx.payload.issue.number,
     });
   });
 };

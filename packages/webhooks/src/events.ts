@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
-import { useEnv } from "@octosync/utils";
+import { useEnv } from "@IssueForge/utils";
+import { db } from "@IssueForge/db";
 import { github } from "./github";
 import { jira } from "./jira";
 import { lookup } from "dns";
@@ -8,6 +9,10 @@ import { hostname } from "os";
 
 export function startEventsServer() {
   const { PORT, GITHUB_REPOSITORY, GITHUB_ORGANIZATION, JIRA_HOST } = useEnv();
+
+  // Initialize database
+  db.initialize();
+  console.log("✓ Database initialized");
 
   let addr = "";
 

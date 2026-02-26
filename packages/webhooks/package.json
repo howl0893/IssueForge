@@ -1,18 +1,19 @@
 {
-  "name": "@octosync/webhooks",
+  "name": "@IssueForge/webhooks",
   "version": "0.1.0",
   "private": true,
   "description": "Keeps Github and Jira issues in sync.",
-  "author": "Marcelo Cardoso <marcelovicentegc@gmail.com>",
+  "author": "Matthew Howlett <mhowlett@applied-ml.dev>",
   "license": "ISC",
-  "homepage": "https://github.com/marcelovicentegc/octosync",
+  "homepage": "https://github.com/howl0893/IssueForge",
   "keywords": [
-    "octosync"
+    "IssueForge"
   ],
   "dependencies": {
-    "@octosync/clients": "^0.1.0",
-    "@octosync/handlers": "^0.1.0",
-    "@octosync/utils": "^0.1.0"
+    "@IssueForge/clients": "^0.1.0",
+    "@IssueForge/db": "^1.0.0",
+    "@IssueForge/handlers": "^0.1.0",
+    "@IssueForge/utils": "^0.1.0"
   },
   "scripts": {
     "build": "rimraf build && tsc",

@@ -1,4 +1,4 @@
-import { useEnv } from "@octosync/utils";
+import { useEnv } from "@IssueForge/utils";
 import { Jira } from "./jirakit";
 
 let jiraInstance: Jira | null = null;
